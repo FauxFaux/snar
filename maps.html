@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Showing pixel and tile coordinates</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta charset="utf-8">
+    <style>
+        html, body, #map-canvas {
+            height: 800px;
+            margin: 0px;
+            padding: 0px
+        }
+
+        #seek {
+            width: 100%
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?v=3.exp&libraries=visualization"></script>
+    <script>
+        function plot(points, map, color) {
+            var path = new google.maps.Polyline({
+                path: points,
+                geodesic: true,
+                strokeColor: color,
+                strokeOpacity: 1.0,
+                strokeWeight: 2
+            });
+
+            path.setMap(map);
+        }
+
+        function seg(map, x1, y1, x2, y2) {
+            var points = [
+                new google.maps.LatLng(x1, y1),
+                new google.maps.LatLng(x2, y2)];
+
+            plot(points, map, 'black');
+        }
+
+        function initialize() {
+            var mapOptions = {
+                zoom: 20,
+                center: new google.maps.LatLng(51.56253,-0.24655),
+                mapTypeId: google.maps.MapTypeId.TERRAIN
+            };
+
+            var map = new google.maps.Map(document.getElementById('map-canvas'),
+                    mapOptions);
+
+            $.get('http://localhost:9000/', function (x) {
+                x.forEach(function (item) {
+                    seg(map, item[0][0], item[0][1], item[1][0], item[1][1]);
+                });
+            });
+
+            $('#file').on('change', function() {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var points = [];
+                    $($($.parseXML(this.result)).find('trkseg')[0]).children().each(function(_, x) {
+                        points.push(new google.maps.LatLng(x.getAttribute('lat'), x.getAttribute('lon')));
+                    });
+                    var seek = $('#seek');
+                    seek.attr('max', points.length);
+                    seek.on('change', function() {
+                        console.log(points[this.value]);
+                    });
+
+                    plot(points, map, 'blue');
+                    var heat = new google.maps.visualization.HeatmapLayer({data: new google.maps.MVCArray(points)});
+                    heat.set('radius', 0.0003); // "pixels at zoom level 0" go screw yourself.  ~= 10 meters?
+                    heat.set('opacity', 0.2);
+                    heat.set('dissipating', false);
+                    heat.setMap(map);
+                };
+                reader.readAsText(this.files[0]);
+            });
+
+        }
+
+        google.maps.event.addDomListener(window, 'load', initialize);
+    </script>
+</head>
+<body>
+<input type="file" id="file"/>
+<div id="map-canvas"></div>
+<input type="range" id="seek" min="0" value="0"/>
+</body>
+</html>
