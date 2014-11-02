@@ -75,7 +75,9 @@ function initialize() {
             });
             seek.attr('max', points.length);
             seek.on('input', function () {
-                circle.set('center', points[this.value]);
+                var loc = points[this.value];
+                circle.set('center', loc);
+                circle.set('radius', loc.score * 1e5);
             });
 
             points.forEach(function (point) {
@@ -91,7 +93,7 @@ function initialize() {
                 });
                 bestRoad.seg.set('strokeColor', 'red');
                 bestRoad.seg.set('strokeWeight', 2);
-                point.score = best;
+                point.score = Math.sqrt(best);
             });
 
             new google.maps.Polyline({
