@@ -3,6 +3,9 @@
 import psycopg2
 import json
 
+# uwsgi --http-socket :9000 --plugin python3 -w serve
+# sagi uwsgi uwsgi-plugin-python3
+
 conn = psycopg2.connect("dbname=osm user=osm password=osm host=localhost")
 
 
