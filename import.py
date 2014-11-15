@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import xml.etree.cElementTree as ET
 import psycopg2
 
@@ -11,13 +12,15 @@ import psycopg2
 # sudo -u postgres psql
 # alter user osm set password='osm';
 # grant all on database osm to osm;
+# osm=# CREATE EXTENSION postgis;
+
 
 conn = psycopg2.connect("dbname=osm user=osm password=osm host=localhost")
 cursor = conn.cursor()
 
 lastnd = None
 
-for _, elem in ET.iterparse('dump.osm', events=("start",)):
+for _, elem in ET.iterparse(sys.stdin, events=("start",)):
     if elem.tag in ('bounds', 'osm', 'tag', 'relation', 'member'):
         continue
     elif elem.tag == 'node':

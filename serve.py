@@ -14,19 +14,12 @@ def application(environ, start_response):
     cursor = conn.cursor()
     cursor.execute("""
 SELECT
-  location       f,
-  (SELECT location
-   FROM nodes
-   WHERE id = r) t
-FROM nodes
-  INNER JOIN (SELECT
-                start AS l,
-                ends  AS r
-              FROM node_node
-              UNION ALL SELECT
-                          ends AS k,
-                          start
-                        FROM node_node) s ON id = s.l
-WHERE location <@ box('(51.56253,-0.24655)', '(51.55386,-0.22284)');
+  ST_X(ST_StartPoint(line)) start_x,
+  ST_Y(ST_StartPoint(line)) start_y,
+  ST_X(ST_EndPoint(line))   end_x,
+  ST_Y(ST_EndPoint(line))   end_y
+FROM mat
+WHERE ST_Intersects(line, ST_MakeBox2d(ST_MakePoint(51.56253, -0.24655), ST_MakePoint(51.55386, -0.22284)))
+ORDER BY 1;
     """)
-    return json.dumps(cursor.fetchall()).replace('"', '').replace('(', '[').replace(')', ']').encode('utf-8')
+    return json.dumps(cursor.fetchall()).encode('utf-8')
