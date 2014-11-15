@@ -45,20 +45,6 @@ function initialize() {
 
     var roads = [];
 
-    $.get('http://localhost:9000/api/1/segs?box=[51.56253,-0.24655,51.55386,-0.22284]', function (x) {
-        x.forEach(function (item) {
-            var x0 = item[0];
-            var y0 = item[1];
-            var x1 = item[2];
-            var y1 = item[3];
-            roads.push({
-                'start': {'x': x0, 'y': y0},
-                'end': {'x': x1, 'y': y1},
-                'seg': seg(map, x0, y0, x1, y1)
-            });
-        });
-    });
-
     $('#file').on('change', function () {
         var reader = new FileReader();
         reader.onload = function (e) {
@@ -80,30 +66,66 @@ function initialize() {
                 circle.set('radius', loc.score * 1e5);
             });
 
-            points.forEach(function (point) {
-                var loc = {'x': point.lat(), 'y': point.lng()};
-                var best = 99999999;
-                var bestRoad = undefined;
-                roads.forEach(function(road) {
-                    var curr = distToSegmentSquared(loc, road.start, road.end);
-                    if (curr < best) {
-                        best = curr;
-                        bestRoad = road;
-                    }
-                });
-                bestRoad.seg.set('strokeColor', 'red');
-                bestRoad.seg.set('strokeWeight', 2);
-                point.score = Math.sqrt(best);
+            var minX = 180,
+                minY=180,
+                maxX=-180,
+                maxY=-180;
+            
+            points.forEach(function(point) {
+                if (point.lat() < minX)
+                    minX = point.lat();
+                if (point.lng() < minY)
+                    minY = point.lng();
+                if (point.lat() > maxX)
+                    maxX = point.lat();
+                if (point.lng() > maxY)
+                    maxY = point.lng();
             });
 
-            new google.maps.Polyline({
-                path: points,
-                geodesic: true,
-                strokeColor: 'blue',
-                strokeOpacity: 1.0,
-                strokeWeight: 2,
-                map: map
+            var bounds = new google.maps.LatLngBounds();
+            bounds.extend(new google.maps.LatLng(minX, minY));
+            bounds.extend(new google.maps.LatLng(maxX, maxY));
+            map.fitBounds(bounds);
+
+            $.get('http://localhost:9000/api/1/segs?box=' + JSON.stringify([minX, minY, maxX, maxY]), function (x) {
+                x.forEach(function (item) {
+                    var x0 = item[0];
+                    var y0 = item[1];
+                    var x1 = item[2];
+                    var y1 = item[3];
+                    roads.push({
+                        'start': {'x': x0, 'y': y0},
+                        'end': {'x': x1, 'y': y1},
+                        'seg': seg(map, x0, y0, x1, y1)
+                    });
+                });
+
+                points.forEach(function (point) {
+                    var loc = {'x': point.lat(), 'y': point.lng()};
+                    var best = 99999999;
+                    var bestRoad = undefined;
+                    roads.forEach(function(road) {
+                        var curr = distToSegmentSquared(loc, road.start, road.end);
+                        if (curr < best) {
+                            best = curr;
+                            bestRoad = road;
+                        }
+                    });
+                    bestRoad.seg.set('strokeColor', 'red');
+                    bestRoad.seg.set('strokeWeight', 2);
+                    point.score = Math.sqrt(best);
+                });
+
+                new google.maps.Polyline({
+                    path: points,
+                    geodesic: true,
+                    strokeColor: 'blue',
+                    strokeOpacity: 1.0,
+                    strokeWeight: 2,
+                    map: map
+                });
             });
+
             var heat = new google.maps.visualization.HeatmapLayer({data: new google.maps.MVCArray(points)});
             heat.set('radius', 0.0003); // "pixels at zoom level 0" go screw yourself.  ~= 10 meters?
             heat.set('opacity', 0.2);
