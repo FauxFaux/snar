@@ -2,7 +2,7 @@
 
 import psycopg2
 import json
-import wsgiref.util as util
+from urllib.parse import parse_qs
 
 # uwsgi --http-socket :9000 --plugin python3 -w serve
 # sagi uwsgi uwsgi-plugin-python3
@@ -16,6 +16,16 @@ def application(env, start_response):
         start_response('404 na', [])
         return (uri + ' not found').encode('utf-8')
 
+    qs = parse_qs(env['QUERY_STRING'])
+    try:
+        box = json.loads(qs.get('box', list()).pop())
+    except KeyError:
+        box = None
+
+    if not isinstance(box, list) or 4 != len(box):
+        start_response("400 ew", [])
+        return "that ain't no box".encode('utf-8')
+
     start_response("200 k", [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")])
     cursor = conn.cursor()
     cursor.execute("""
@@ -25,7 +35,8 @@ SELECT
   ST_X(ST_EndPoint(line))   end_x,
   ST_Y(ST_EndPoint(line))   end_y
 FROM mat
-WHERE ST_Intersects(line, ST_MakeBox2d(ST_MakePoint(51.56253, -0.24655), ST_MakePoint(51.55386, -0.22284)))
-ORDER BY 1;
-    """)
-    return json.dumps(cursor.fetchall()).encode('utf-8')
+WHERE ST_Intersects(line, ST_MakeBox2d(ST_MakePoint(%s,%s), ST_MakePoint(%s,%s)))
+ORDER BY 1
+    """,
+    box)
+    return json.dumps(cursor.fetchall(), separators=(',', ':')).encode('utf-8')
