@@ -45,12 +45,12 @@ function initialize() {
 
     var roads = [];
 
-    $.get('http://localhost:9000/', function (x) {
+    $.get('http://localhost:9000/api/1/segs?box=[51.56253,-0.24655,51.55386,-0.22284]', function (x) {
         x.forEach(function (item) {
-            var x0 = item[0][0];
-            var x1 = item[1][0];
-            var y0 = item[0][1];
-            var y1 = item[1][1];
+            var x0 = item[0];
+            var y0 = item[1];
+            var x1 = item[2];
+            var y1 = item[3];
             roads.push({
                 'start': {'x': x0, 'y': y0},
                 'end': {'x': x1, 'y': y1},
