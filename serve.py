@@ -2,6 +2,7 @@
 
 import psycopg2
 import json
+import wsgiref.util as util
 
 # uwsgi --http-socket :9000 --plugin python3 -w serve
 # sagi uwsgi uwsgi-plugin-python3
@@ -9,7 +10,12 @@ import json
 conn = psycopg2.connect("dbname=osm user=osm password=osm host=localhost")
 
 
-def application(environ, start_response):
+def application(env, start_response):
+    uri = env['PATH_INFO']
+    if uri != '/api/1/segs':
+        start_response('404 na', [])
+        return (uri + ' not found').encode('utf-8')
+
     start_response("200 k", [("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")])
     cursor = conn.cursor()
     cursor.execute("""
