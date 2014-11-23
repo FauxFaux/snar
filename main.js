@@ -70,6 +70,9 @@ function initialize() {
                 minY=180,
                 maxX=-180,
                 maxY=-180;
+
+            // set of boxes which cover the route
+            var coveringBoxes = {};
             
             points.forEach(function(point) {
                 if (point.lat() < minX)
@@ -80,6 +83,7 @@ function initialize() {
                     maxX = point.lat();
                 if (point.lng() > maxY)
                     maxY = point.lng();
+                coveringBoxes[Math.floor(point.lat() * 100) + ',' + Math.floor(point.lng()*100)] = true;
             });
 
             var bounds = new google.maps.LatLngBounds();
@@ -87,18 +91,33 @@ function initialize() {
             bounds.extend(new google.maps.LatLng(maxX, maxY));
             map.fitBounds(bounds);
 
-            $.get('http://localhost:9000/api/1/segs?box=' + JSON.stringify([minX, minY, maxX, maxY]), function (x) {
-                x.forEach(function (item) {
-                    var x0 = item[0];
-                    var y0 = item[1];
-                    var x1 = item[2];
-                    var y1 = item[3];
-                    roads.push({
-                        'start': {'x': x0, 'y': y0},
-                        'end': {'x': x1, 'y': y1},
-                        'seg': seg(map, x0, y0, x1, y1)
+            var roadRequests = [];
+
+            for (var key in coveringBoxes) {
+                if (!coveringBoxes.hasOwnProperty(key)) {
+                    continue;
+                }
+
+                var parts = key.split(',');
+                var lX = parts[0] / 100;
+                var lY = parts[1] / 100;
+
+                roadRequests.push($.get('http://localhost:9000/api/1/segs?box=' + JSON.stringify([lX, lY, lX+1/100, lY+1/100]), function (x) {
+                    x.forEach(function (item) {
+                        var x0 = item[0];
+                        var y0 = item[1];
+                        var x1 = item[2];
+                        var y1 = item[3];
+                        roads.push({
+                            'start': {'x': x0, 'y': y0},
+                            'end': {'x': x1, 'y': y1},
+                            'seg': seg(map, x0, y0, x1, y1)
+                        });
                     });
-                });
+                }));
+            }
+
+            $.when.apply($, roadRequests).then(function (x) {
 
                 points.forEach(function (point) {
                     var loc = {'x': point.lat(), 'y': point.lng()};
